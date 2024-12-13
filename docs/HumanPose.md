@@ -87,7 +87,7 @@ Supported datasets for human body pose extraction:
 
    python datasets/tools/humanpose_process.py \
    --dataset waymo \
-   --data_root data/waymo/processed/training \
+   --data_root /home/jason/data/waymo/processed/pedestrian/training\
    --split_file data/waymo_example_scenes.txt \
    [--save_temp] [--verbose]
    ```

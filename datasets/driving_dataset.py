@@ -20,7 +20,7 @@ from utils.misc import export_points_to_ply, import_str
 
 logger = logging.getLogger()
 
-DEBUG_PCD=False
+DEBUG_PCD=True
 if DEBUG_PCD:
     DEBUG_OUTPUT_DIR="debug"
     os.makedirs(DEBUG_OUTPUT_DIR, exist_ok=True)

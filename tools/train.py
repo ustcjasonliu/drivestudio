@@ -10,10 +10,11 @@ import argparse
 
 import torch
 from tools.eval import do_evaluation
-from utils.misc import import_str
+from utils.misc import import_str, export_gaussians_to_ply
 from utils.backup import backup_project
 from utils.logging import MetricLogger, setup_logging
 from models.video_utils import render_images, save_videos
+
 from datasets.driving_dataset import DrivingDataset
 
 logger = logging.getLogger()
@@ -30,6 +31,7 @@ def set_seeds(seed=31):
 
 def setup(args):
     # get config
+    print("config_file ", args.config_file)
     cfg = OmegaConf.load(args.config_file)
     
     # parse datasets
@@ -45,9 +47,10 @@ def setup(args):
         dataset_cfg = OmegaConf.load(
             os.path.join("configs", "datasets", f"{dataset_type}.yaml")
         )
+        print(" data set path ", os.path.join("configs", "datasets", f"{dataset_type}.yaml"))
         # merge data
         cfg = OmegaConf.merge(cfg, dataset_cfg)
-    
+
     # merge cli
     cfg = OmegaConf.merge(cfg, args_from_cli)
     log_dir = os.path.join(args.output_root, args.project, args.run_name)
@@ -57,6 +60,7 @@ def setup(args):
     os.makedirs(log_dir, exist_ok=True)
     for folder in ["images", "videos", "metrics", "configs_bk", "buffer_maps", "backup"]:
         os.makedirs(os.path.join(log_dir, folder), exist_ok=True)
+
     
     # setup wandb
     if args.enable_wandb:
@@ -79,6 +83,7 @@ def setup(args):
     # setup random seeds
     set_seeds(cfg.seed)
 
+
     global logger
     setup_logging(output=log_dir, level=logging.INFO, time_string=current_time)
     logger.info("\n".join("%s: %s" % (k, str(v)) for k, v in sorted(dict(vars(args)).items())))
@@ -88,6 +93,7 @@ def setup(args):
     saved_cfg_path = os.path.join(log_dir, "config.yaml")
     with open(saved_cfg_path, "w") as f:
         OmegaConf.save(config=cfg, f=f)
+    
         
     # also save a backup copy
     saved_cfg_path_bk = os.path.join(log_dir, "configs_bk", f"config_{current_time}.yaml")
@@ -101,13 +107,14 @@ def setup(args):
         ["configs", "datasets", "models", "utils", "tools"], 
         [".py", ".h", ".cpp", ".cuh", ".cu", ".sh", ".yaml"]
     )
+
     return cfg
 
 def main(args):
     cfg = setup(args)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # build dataset
+    # build" dataset
     dataset = DrivingDataset(data_cfg=cfg.data)
 
     # setup trainer
@@ -229,6 +236,8 @@ def main(args):
                 fps=cfg.render.fps,
                 verbose=False,
             )
+            trainer.save_gaussians_to_ply(cfg.log_dir, step)
+            
             if args.enable_wandb:
                 for k, v in vis_frame_dict.items():
                     wandb.log({"image_rendering/" + k: wandb.Image(v)})

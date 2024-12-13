@@ -1,10 +1,12 @@
 from typing import Dict
 import torch
 import logging
+import os
+from pathlib import Path
 
 from datasets.driving_dataset import DrivingDataset
 from models.trainers.base import BasicTrainer, GSModelType
-from utils.misc import import_str
+from utils.misc import import_str, export_gaussians_to_ply
 from utils.geometry import uniform_sample_sphere
 
 logger = logging.getLogger()
@@ -18,6 +20,7 @@ class MultiTrainer(BasicTrainer):
         self.num_timesteps = num_timesteps
         super().__init__(**kwargs)
         self.render_each_class = True
+        self.gs = None
         
     def register_normalized_timestamps(self, num_timestamps: int):
         self.normalized_timestamps = torch.linspace(0, 1, num_timestamps, device=self.device)
@@ -232,14 +235,14 @@ class MultiTrainer(BasicTrainer):
             image_ids=image_infos["img_idx"].flatten()[0],
             novel_view=novel_view
         )
-        gs = self.collect_gaussians(
+        self.gs = self.collect_gaussians(
             cam=processed_cam,
             image_ids=image_infos["img_idx"].flatten()[0]
         )
 
         # render gaussians
         outputs, render_fn = self.render_gaussians(
-            gs=gs,
+            gs=self.gs,
             cam=processed_cam,
             near_plane=self.render_cfg.near_plane,
             far_plane=self.render_cfg.far_plane,
@@ -294,3 +297,12 @@ class MultiTrainer(BasicTrainer):
         metric_dict = super().compute_metrics(outputs, image_infos)
         
         return metric_dict
+    
+
+    def save_gaussians_to_ply(self, log_dir, step):
+        Path(os.path.join(log_dir, "point_cloud")).mkdir(parents=True, exist_ok=True)
+        for class_name, model in self.models.items():
+           if class_name != "Sky" and class_name != "Affine" and class_name != "CamPose":
+               export_gaussians_to_ply(model, 
+                                       path=os.path.join(log_dir, "point_cloud"),
+                                       name=f"{class_name}_{step}.ply")

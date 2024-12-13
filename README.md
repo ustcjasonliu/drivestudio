@@ -137,9 +137,9 @@ end_timestep=-1 # end frame index, -1 for the last frame
 
 python tools/train.py \
     --config_file configs/omnire.yaml \
-    --output_root $output_root \
-    --project $project \
-    --run_name $expname \
+    --output_root /home/jason/Downloads/waymo/output \
+    --project test1 \
+    --run_name test2 \
     dataset=waymo/3cams \
     data.scene_idx=$scene_idx \
     data.start_timestep=$start_timestep \

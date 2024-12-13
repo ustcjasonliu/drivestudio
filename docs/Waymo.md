@@ -62,11 +62,11 @@ To preprocess specific scenes of the dataset, use the following command:
 ```shell
 # export PYTHONPATH=\path\to\project
 python datasets/preprocess.py \
-    --data_root data/waymo/raw/ \
-    --target_dir data/waymo/processed \
+    --data_root /home/jason/data/waymo/raw/dynamic\
+    --target_dir /home/jason/data/waymo/processed/dynamic\
     --dataset waymo \
     --split training \
-    --scene_ids 23 114 327 621 703 172 552 788 \
+    --scene_ids 16 21 22 25 31 \
     --workers 8 \
     --process_keys images lidar calib pose dynamic_masks objects
 ```
@@ -126,10 +126,10 @@ conda activate segformer
 segformer_path=/pathtosegformer
 
 python datasets/tools/extract_masks.py \
-    --data_root data/waymo/processed/training \
-    --segformer_path=$segformer_path \
-    --checkpoint=$segformer_path/pretrained/segformer.b5.1024x1024.city.160k.pth \
-    --split_file data/waymo_example_scenes.txt \
+    --data_root //home/jason/data/waymo/processed/pedestrian/training \
+    --segformer_path=/home/jason/workspace/SegFormer \
+    --checkpoint=/home/jason/workspace/SegFormer/pretrained/segformer.b5.1024x1024.city.160k.pth \
+    --split_file /home/jason/workspace/drivestudio/data/waymo_example_scenes.txt\
     --process_dynamic_mask
 ```
 Replace `/pathtosegformer` with the actual path to your Segformer installation.
