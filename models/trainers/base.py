@@ -7,7 +7,7 @@ import logging
 import numpy as np
 import torch
 import torch.nn as nn
-
+from utils.misc import import_str,export_gaussians_to_ply
 import kornia
 from enum import IntEnum
 import viser
@@ -19,7 +19,6 @@ from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 from models.gaussians.basics import *
 
 logger = logging.getLogger()
-
 class GSModelType(IntEnum):
     Background = 0
     RigidNodes = 1
@@ -696,6 +695,9 @@ class BasicTrainer(nn.Module):
         logger.info(f"Loading checkpoint from {ckpt_path}")
         state_dict = torch.load(ckpt_path)
         self.load_state_dict(state_dict, load_only_model=load_only_model, strict=True)
+        directory_name = os.path.dirname(ckpt_path)
+        logger.info(f"directory namey {directory_name}")
+      
         
     def save_checkpoint(
         self,
@@ -712,6 +714,11 @@ class BasicTrainer(nn.Module):
             ckpt_path = os.path.join(log_dir, f"checkpoint_{self.step:05d}.pth")
         torch.save(self.state_dict(only_model=save_only_model), ckpt_path)
         logger.info(f"Saved a checkpoint to {ckpt_path}")
+
+    def save_gaussians_to_ply(self, log_dir: str) -> None:
+        directory_name = log_dir + "/ply"
+        self.export_gaussians_to_ply(path=directory_name, step=self.step)
+
         
     def init_viewer(self, port: int = 8080):
         # a simple viewer for background ONLY visualization
@@ -786,3 +793,13 @@ class BasicTrainer(nn.Module):
             radius_clip=4.0,  # skip GSs that have small image radius (in pixels)
         )
         return render_colors[0].cpu().numpy()
+
+    def export_gaussians_to_ply(self, path, step):
+        for class_name in self.gaussian_classes.keys():
+            model = self.models[class_name]
+            export_gaussians_to_ply(
+                model=model,
+                path=path,
+                name=f'{step}_{class_name}_' + ".ply",
+                aabb=None
+            )

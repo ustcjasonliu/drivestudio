@@ -53,7 +53,7 @@ def export_gaussians_to_ply(model, path, name='point_cloud.ply', aabb=None):
     map_to_tensors = {}
     
     with torch.no_grad():
-        positions = model.means
+        positions = model._means
         if aabb is not None:
             aabb = aabb.to(positions.device)
             aabb_min, aabb_max = aabb[:3], aabb[3:]
@@ -75,18 +75,18 @@ def export_gaussians_to_ply(model, path, name='point_cloud.ply', aabb=None):
             map_to_tensors[f"f_dc_{i}"] = colors[:, i : i + 1]
 
         shs = model.shs_rest[vis_mask].data.cpu().numpy()
-        if model.config.sh_degree > 0:
+        if model.sh_degree > 0:
             shs = shs.reshape((colors.shape[0], -1, 1))
             for i in range(shs.shape[-1]):
                 map_to_tensors[f"f_rest_{i}"] = shs[:, i]
 
-        map_to_tensors["opacity"] = model.opacities[vis_mask].data.cpu().numpy()
+        map_to_tensors["opacity"] = model.get_opacity[vis_mask].data.cpu().numpy()
 
-        scales = model.scales[vis_mask].data.cpu().unsqueeze(-1).numpy()
+        scales = model._scales[vis_mask].data.cpu().unsqueeze(-1).numpy()
         for i in range(3):
             map_to_tensors[f"scale_{i}"] = scales[:, i]
 
-        quats = model.quats[vis_mask].data.cpu().unsqueeze(-1).numpy()
+        quats = model._quats[vis_mask].data.cpu().unsqueeze(-1).numpy()
 
         for i in range(4):
             map_to_tensors[f"rot_{i}"] = quats[:, i]

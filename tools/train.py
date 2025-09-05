@@ -55,7 +55,7 @@ def setup(args):
     # update config and create log dir
     cfg.log_dir = log_dir
     os.makedirs(log_dir, exist_ok=True)
-    for folder in ["images", "videos", "metrics", "configs_bk", "buffer_maps", "backup"]:
+    for folder in ["ply", "images", "videos", "metrics", "configs_bk", "buffer_maps", "backup"]:
         os.makedirs(os.path.join(log_dir, folder), exist_ok=True)
     
     # setup wandb
@@ -151,13 +151,13 @@ def main(args):
         "RigidNodes_rgbs",
         "DeformableNodes_rgbs",
         "SMPLNodes_rgbs",
-        # "depths",
-        # "Background_depths",
-        # "Dynamic_depths",
-        # "RigidNodes_depths",
-        # "DeformableNodes_depths",
-        # "SMPLNodes_depths",
-        # "mask"
+        "depths"
+        "Background_depths",
+        "Dynamic_depths",
+        "RigidNodes_depths",
+        "DeformableNodes_depths",
+        "SMPLNodes_depths",
+        "mask"
     ]
     if cfg.render.vis_lidar:
         render_keys.insert(0, "lidar_on_images")
@@ -299,6 +299,8 @@ def main(args):
                 save_only_model=True,
                 is_final=step == trainer.num_iters,
             )
+        if do_save or step % 50 == 0:
+            trainer.save_gaussians_to_ply(log_dir=cfg.log_dir)
         
         #----------------------------------------------------------------------------
         #------------------------    Cache Image Error    ---------------------------

@@ -1,26 +1,25 @@
-# NuScenes dataset configuration
+# Waymo dataset configuration
 # Processed cameras:
 #   idx    camera           original size
-#    0    CAM_FRONT         (900, 1600)
-#    1    CAM_FRONT_LEFT    (900, 1600)
-#    2    CAM_FRONT_RIGHT   (900, 1600)
-#    3    CAM_BACK_LEFT     (900, 1600)
-#    4    CAM_BACK_RIGHT    (900, 1600)
-#    5    CAM_BACK          (900, 1600)
+#    0    front_camera       (1920, 1280)
+#    1    front_left_camera  (1920, 1280)
+#    2    front_right_camera (1920, 1280)
+#    3    left_camera        (1920, 866)
+#    4    right_camera       (1920, 866)
 
 data:
-  data_root: data/nuscenes/processed_10Hz/mini # data root for the dataset
-  dataset: nuscenes # dataset type
-  scene_idx: 0 # which scene to use, [0, 849] for nuscenes's train/val sets, inclusive
+  data_root: /mnt/public/AISIM/yuchen/repos/tools/chery_dataset_process/outputs_unfixed_lidarfixed # data root for the dataset
+  dataset: waymo
+  scene_idx: 13 # which scene to use, [0, 798] for waymo's training set and [0, 849] for nuscenes's train/val sets, inclusive
   start_timestep: 0 # which timestep to start from
   end_timestep: -1 # which timestep to end at, -1 means the last timestep
-  preload_device: cuda # choose from ["cpu", "cuda"], cache the data on this device
+  preload_device: cuda # choose from ["cpu", "cuda"], cache the data on this device.
   pixel_source: # image source and object annotations
-    type: datasets.nuscenes.nuscenes_sourceloader.NuScenesPixelSource
-    cameras: [0, 1, 2] # which cameras to use
-    downscale_when_loading: [2, 2, 2] # the size of the images to load
+    type: datasets.waymo.waymo_sourceloader.WaymoPixelSource
+    cameras: [1, 2, 4] # which cameras to use
+    downscale_when_loading: [4, 2, 2] # the size of the images to load
     downscale: 1 # downscale factor wrt to the downscale_when_loading
-    undistort: False # whether to undistort the images
+    undistort: True # whether to undistort the images
     test_image_stride: 0 # use every Nth timestep for the test set. if 0, use all images for training and none for testing
     load_sky_mask: True # whether to load sky mask
     load_dynamic_mask: True # whether to load dynamic mask
@@ -31,8 +30,11 @@ data:
       buffer_ratio: 0.5 # the percentage of images sampled according to the error buffer
       start_enhance_weight: 3 # give more chance to sample starting frames, which usually have more errors
   lidar_source: # everything related to "lidar" --- from lidar points
-    type: datasets.nuscenes.nuscenes_sourceloader.NuScenesLiDARSource
+    type: datasets.waymo.waymo_sourceloader.WaymoLiDARSource
     load_lidar: True # whether to load lidar
+    only_use_top_lidar: False # whether to only use the top lidar
+    truncated_max_range: 80 # max range for truncated lidar in a ego-centric coordinate system
+    truncated_min_range: -2 # min range for truncated lidar in a ego-centric coordinate system.
     # ---- compute aabb from lidar ---- #
     # if load_lidar is True, we compute aabb from lidar, otherwise we compute aabb from cameras
     # 1) downsample lidar by random sampling to 1/lidar_downsample_factor number of points

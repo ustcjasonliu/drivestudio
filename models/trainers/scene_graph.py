@@ -4,7 +4,7 @@ import logging
 
 from datasets.driving_dataset import DrivingDataset
 from models.trainers.base import BasicTrainer, GSModelType
-from utils.misc import import_str
+from utils.misc import import_str,export_gaussians_to_ply
 from utils.geometry import uniform_sample_sphere
 
 logger = logging.getLogger()
@@ -294,3 +294,7 @@ class MultiTrainer(BasicTrainer):
         metric_dict = super().compute_metrics(outputs, image_infos)
         
         return metric_dict
+
+
+    
+

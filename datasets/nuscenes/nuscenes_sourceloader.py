@@ -41,13 +41,29 @@ OBJECT_CLASS_NODE_MAPPING = {
     "human.pedestrian.stroller": ModelType.DeformableNodes,
     "human.pedestrian.wheelchair": ModelType.DeformableNodes,
     "animal": ModelType.DeformableNodes,
-    "vehicle.bicycle": ModelType.DeformableNodes
+    "vehicle.bicycle": ModelType.DeformableNodes,
+
+    # Additional classes for compatibility
+    "car": ModelType.RigidNodes,
+    "truck": ModelType.RigidNodes,
+    "bus": ModelType.RigidNodes,
+    "unknown": ModelType.RigidNodes,
+    "traffic_cone": ModelType.RigidNodes,
+    "barrier": ModelType.RigidNodes,
+    "bicycle": ModelType.DeformableNodes,
+    "motorcycle": ModelType.RigidNodes,
+    "construction_vehicle": ModelType.RigidNodes,
+    "tricycle": ModelType.DeformableNodes,
+    "person": ModelType.SMPLNodes,
+    "pickup_truck": ModelType.RigidNodes,
 }
+
 SMPLNODE_CLASSES = [
     "human.pedestrian.adult",
     "human.pedestrian.child", 
     "human.pedestrian.construction_worker",
-    "human.pedestrian.police_officer"
+    "human.pedestrian.police_officer",
+    "person"
 ]
 
 # OpenCV to Dataset coordinate transformation
@@ -221,8 +237,16 @@ class NuScenesPixelSource(ScenePixelSource):
         frame_instances_path = os.path.join(self.data_path, "instances", "frame_instances.json")
         with open(instances_info_path, "r") as f:
             instances_info = json.load(f)
+            # Shift instance IDs in instances_info to start from 0
+            shifted_instances_info = {}
+            for instance_id, instance_data in instances_info.items():
+                shifted_instance_id = str(int(instance_id) - 1)
+                shifted_instances_info[shifted_instance_id] = instance_data
+            instances_info = shifted_instances_info
         with open(frame_instances_path, "r") as f:
             frame_instances = json.load(f)
+            for frame_idx, valid_instances in frame_instances.items():
+                frame_instances[frame_idx] = [instance_id - 1 for instance_id in valid_instances]
         # get pose of each instance at each frame
         # shape (num_frames, num_instances, 4, 4)
         num_instances = len(instances_info)
