@@ -104,21 +104,51 @@ def layout_waymo(
         # left_camera # front_left_camera # front_camera # front_right_camera # right_camera #
         ######################################################################################
     """
+    assert len(imgs) == len(cam_names)
     channel = imgs[0].shape[-1]
+
+    # 以 front_camera 尺寸作为基准槽位
     front_cam_idx = cam_names.index('front_camera')
     front_img = imgs[front_cam_idx]
-    landscape_width, landscape_height = front_img.shape[1], front_img.shape[0]
-    
+    landscape_height, landscape_width = front_img.shape[0], front_img.shape[1]
+
     height = landscape_height
     width = landscape_width * 5
     tiled_img = np.zeros((height, width, channel), dtype=np.float32)
     filled_mask = np.zeros((height, width), dtype=np.uint8)
-    
+
+    def resize_exact(img, tgt_h, tgt_w):
+        if img.shape[0] == tgt_h and img.shape[1] == tgt_w:
+            return img
+        return cv2.resize(img, (tgt_w, tgt_h), interpolation=cv2.INTER_LINEAR)
+
+    def resize_to_width_keep_ar(img, tgt_w, max_h):
+        # 等比缩放至指定宽度，若高度超过max_h则再次按高裁剪或缩放
+        h, w = img.shape[0], img.shape[1]
+        if w != tgt_w:
+            scale = tgt_w / w
+            new_h = int(round(h * scale))
+            img = cv2.resize(img, (tgt_w, new_h), interpolation=cv2.INTER_LINEAR)
+            h, w = img.shape[0], img.shape[1]
+        if h > max_h:
+            # 再按高度等比缩小到不超过 max_h
+            scale = max_h / h
+            new_w = int(round(w * scale))
+            img = cv2.resize(img, (new_w, max_h), interpolation=cv2.INTER_LINEAR)
+            h, w = img.shape[0], img.shape[1]
+        return img
+
+    # 先把三张前向相机统一成front尺寸，避免赋值报错
+    for idx, cam_name in enumerate(cam_names):
+        if cam_name in ("front_left_camera", "front_camera", "front_right_camera","left_camera", "right_camera"):
+            imgs[idx] = resize_exact(imgs[idx], landscape_height, landscape_width)
+    # 放置
     for idx, cam_name in enumerate(cam_names):
         img = imgs[idx]
         if cam_name == "left_camera":
-            tiled_img[landscape_height - img.shape[0]:, :landscape_width] = img
-            filled_mask[landscape_height - img.shape[0]:, :landscape_width] = 1
+            h = img.shape[0]
+            tiled_img[landscape_height - h:, :landscape_width] = img
+            filled_mask[landscape_height - h:, :landscape_width] = 1
         elif cam_name == "front_left_camera":
             tiled_img[:, landscape_width : 2 * landscape_width] = img
             filled_mask[:, landscape_width : 2 * landscape_width] = 1
@@ -129,13 +159,15 @@ def layout_waymo(
             tiled_img[:, 3 * landscape_width : 4 * landscape_width] = img
             filled_mask[:, 3 * landscape_width : 4 * landscape_width] = 1
         elif cam_name == "right_camera":
-            tiled_img[landscape_height - img.shape[0]:, 4 * landscape_width :] = img
-            filled_mask[landscape_height - img.shape[0]:, 4 * landscape_width :] = 1
-    
-    # crop the image according to the lagrest filled area
-    min_y, max_y = np.where(filled_mask)[0].min(), np.where(filled_mask)[0].max()
-    min_x, max_x = np.where(filled_mask)[1].min(), np.where(filled_mask)[1].max()
-    tiled_img = tiled_img[min_y:max_y, min_x:max_x]
+            h = img.shape[0]
+            tiled_img[landscape_height - h:, 4 * landscape_width :] = img
+            filled_mask[landscape_height - h:, 4 * landscape_width :] = 1
+
+    # 裁掉空白
+    ys, xs = np.where(filled_mask)
+    min_y, max_y = ys.min(), ys.max()
+    min_x, max_x = xs.min(), xs.max()
+    tiled_img = tiled_img[min_y:max_y + 1, min_x:max_x + 1]
     return tiled_img
 
 def layout_nuscenes(

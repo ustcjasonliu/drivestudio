@@ -17,13 +17,35 @@ from datasets.base.pixel_source import ScenePixelSource, CameraData
 
 logger = logging.getLogger()
 
-# define each class's node type
+# define each class's node type (case-insensitive lookup; unknown -> RigidNodes)
+# Extended to support common Waymo-style labels
 OBJECT_CLASS_NODE_MAPPING = {
-    "Vehicle": ModelType.RigidNodes,
-    "Pedestrian": ModelType.SMPLNodes,
-    "Cyclist": ModelType.DeformableNodes
+    # people
+    "pedestrian": ModelType.SMPLNodes,
+    "person": ModelType.SMPLNodes,
+
+    # vehicles
+    "vehicle": ModelType.RigidNodes,
+    "car": ModelType.RigidNodes,
+    "pickup_truck": ModelType.RigidNodes,
+    "truck": ModelType.RigidNodes,
+    "bus": ModelType.RigidNodes,
+    "construction_vehicle": ModelType.RigidNodes,
+
+    # riders/others
+    "cyclist": ModelType.DeformableNodes,  # rider-as-agent (if present)
+    "bicycle": ModelType.RigidNodes,
+    "motorcycle": ModelType.RigidNodes,
+    "tricycle": ModelType.RigidNodes,
+
+    # static obstacles / misc
+    "traffic_cone": ModelType.RigidNodes,
+    "barrier": ModelType.RigidNodes,
+    "unknown": ModelType.RigidNodes,
 }
-SMPLNODE_CLASSES = ["Pedestrian"]
+
+# Kept for compatibility in code paths that refer to SMPL classes explicitly
+SMPLNODE_CLASSES = ["pedestrian", "person"]
 
 # OpenCV to Dataset coordinate transformation
 # opencv coordinate system: x right, y down, z front
@@ -223,7 +245,13 @@ class WaymoPixelSource(ScenePixelSource):
             os.path.join(self.data_path, "ego_pose", f"{self.start_timestep:03d}.txt")
         )
         for k, v in instances_info.items():
-            instances_model_types[int(k)] = OBJECT_CLASS_NODE_MAPPING[v["class_name"]]
+            cls_name_raw = v.get("class_name", "unknown")
+            cls_name = str(cls_name_raw).lower()
+            node_type = OBJECT_CLASS_NODE_MAPPING.get(cls_name)
+            if node_type is None:
+                logger.warning(f"[Waymo] Unrecognized class '{cls_name_raw}', fallback to RigidNodes.")
+                node_type = ModelType.RigidNodes
+            instances_model_types[int(k)] = node_type
             for frame_idx, obj_to_world, box_size in zip(v["frame_annotations"]["frame_idx"], v["frame_annotations"]["obj_to_world"], v["frame_annotations"]["box_size"]):
                 # the first ego pose as the origin of the world coordinate system.
                 obj_to_world = np.array(obj_to_world).reshape(4, 4)
