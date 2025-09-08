@@ -17,6 +17,7 @@ from utils.visualization import get_layout
 from utils.geometry import transform_points
 from utils.camera import get_interp_novel_trajectories
 from utils.misc import export_points_to_ply, import_str
+from torchvision.utils import save_image
 
 logger = logging.getLogger()
 
@@ -82,6 +83,19 @@ class DrivingDataset(SceneDataset):
             delete_out_of_view_points=True
         )
         self.aabb = self.get_aabb()
+
+
+        #-------temp save all images-----#
+        # for cam in self.pixel_source.camera_data.values():
+        #     print(f"Saving all images for camera {cam.cam_name}")
+        #     for index in range(len(cam.images)):
+        #         print(f"Saving image {index} of shape {cam.images[index].shape} for camera {cam.cam_name}")
+        #         image = cam.images[index]
+        #         depth = cam.lidar_depth_maps[index]
+        #         image[depth > 0] = 255
+        #         image = image.permute(2, 0, 1)
+        #         save_image(image, f"/mnt/public/jason/drivestudio/temp/all_images_{cam.cam_name}_{index}.png")
+
 
         # ---- define train and test indices ---- #
         # note that the timestamps of the pixel source and the lidar source are the same in waymo dataset
