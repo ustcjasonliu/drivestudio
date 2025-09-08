@@ -299,7 +299,7 @@ def main(args):
                 save_only_model=True,
                 is_final=step == trainer.num_iters,
             )
-        if do_save or step % 50 == 0:
+        if do_save or step % 500 == 0:
             trainer.save_gaussians_to_ply(log_dir=cfg.log_dir)
         
         #----------------------------------------------------------------------------

@@ -4,7 +4,7 @@ start_timestep=0 # start frame index for training
 end_timestep=-1 # end frame index, -1 for the last frame
 output_root="output"
 project="default_project"
-expname="chery-3cams"
+expname="set_max_split_to_80000"
 
 python tools/train.py \
     --config_file configs/streetgs.yaml \

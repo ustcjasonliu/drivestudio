@@ -9,6 +9,7 @@ from omegaconf import OmegaConf
 
 import torch
 from torch import Tensor
+import open3d as o3d
 
 from pytorch3d.transforms import matrix_to_quaternion
 from datasets.base.scene_dataset import ModelType
@@ -435,6 +436,12 @@ class WaymoLiDARSource(SceneLidarSource):
 
             lidar_origins = torch.from_numpy(lidar_info[:, :3]).float()
             lidar_points = torch.from_numpy(lidar_info[:, 3:6]).float()
+
+            # pcd = o3d.geometry.PointCloud()
+            # pcd.points = o3d.utility.Vector3dVector(lidar_points)
+            # o3d.io.write_point_cloud(f"points_{t}.ply", pcd)
+            # print(f"save point cloud to points_{t}.ply")
+            
             lidar_ids = torch.from_numpy(lidar_info[:, 13]).float()
             lidar_flows = torch.from_numpy(lidar_info[:, 6:9]).float()
             lidar_flow_classes = torch.from_numpy(lidar_info[:, 9]).long()

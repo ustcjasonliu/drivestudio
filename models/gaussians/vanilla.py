@@ -277,7 +277,7 @@ class VanillaGaussians(nn.Module):
 
             # cull NOTE: Offset all the opacity reset logic by refine_every so that we don't
                 # save checkpoints right when the opacity is reset (saves every 2k)
-            if self.step % reset_interval > max(self.num_train_images, self.ctrl_cfg.refine_interval):
+            if do_densification and self.step % reset_interval > max(self.num_train_images, self.ctrl_cfg.refine_interval):
                 deleted_mask = self.cull_gaussians()
                 param_groups = self.get_gaussian_param_groups()
                 remove_from_optim(optimizer, deleted_mask, param_groups)

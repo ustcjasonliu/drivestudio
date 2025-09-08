@@ -10,7 +10,7 @@ from omegaconf import OmegaConf
 from pytorch3d.transforms import matrix_to_quaternion
 from torch import Tensor
 from tqdm import tqdm, trange
-
+import open3d as o3d
 from datasets.base.scene_dataset import ModelType
 from datasets.base.lidar_source import SceneLidarSource
 from datasets.base.pixel_source import CameraData, ScenePixelSource
