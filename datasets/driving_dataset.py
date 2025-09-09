@@ -18,6 +18,7 @@ from utils.geometry import transform_points
 from utils.camera import get_interp_novel_trajectories
 from utils.misc import export_points_to_ply, import_str
 from torchvision.utils import save_image
+import open3d as o3d
 
 logger = logging.getLogger()
 
@@ -633,6 +634,66 @@ class DrivingDataset(SceneDataset):
         # train_indices are img indices, so the length is num_cams * num_train_timesteps
         # but train_timesteps are timesteps, so the length is num_train_timesteps (len(unique_train_timestamps))
         return train_timesteps, test_timesteps, train_indices, test_indices
+
+    def project_lidar_pts_on_image(self, frame_idx, lidar_infos, cam):
+        lidar_points = (
+            lidar_infos["lidar_origins"]
+            + lidar_infos["lidar_viewdirs"] * lidar_infos["lidar_ranges"]
+        )
+        # pcd = o3d.geometry.PointCloud()
+        # pcd.points = o3d.utility.Vector3dVector(lidar_points.cpu().numpy())
+        # save_lidar_name = f"/mnt/public/jason/drivestudio/temp/{frame_idx}.ply"
+        # o3d.io.write_point_cloud(save_lidar_name, pcd, write_ascii=False)  # binary 更小
+        # project lidar points to the image plane
+        if cam.undistort:
+            new_camera_matrix, _ = cv2.getOptimalNewCameraMatrix(
+                        cam.intrinsics[frame_idx].cpu().numpy(),
+                        cam.distortions[frame_idx].cpu().numpy(),
+                        (cam.WIDTH, cam.HEIGHT),
+                        alpha=1,
+                    )
+            intrinsic_4x4 = torch.nn.functional.pad(
+                    torch.from_numpy(new_camera_matrix), (0, 1, 0, 1)
+                ).to(self.device)
+        else:
+            intrinsic_4x4 = torch.nn.functional.pad(
+                cam.intrinsics[frame_idx], (0, 1, 0, 1)
+            )
+        intrinsic_4x4[3, 3] = 1.0
+        lidar2img = intrinsic_4x4 @ cam.cam_to_worlds[frame_idx].inverse()
+        lidar_points = (
+            lidar2img[:3, :3] @ lidar_points.T + lidar2img[:3, 3:4]
+        ).T # (num_pts, 3)
+        
+        depth = lidar_points[:, 2]
+        cam_points = lidar_points[:, :2] / (depth.unsqueeze(-1) + 1e-6) # (num_pts, 2)
+        valid_mask = (
+            (cam_points[:, 0] >= 0)
+            & (cam_points[:, 0] < cam.WIDTH)
+            & (cam_points[:, 1] >= 0)
+            & (cam_points[:, 1] < cam.HEIGHT)
+            & (depth > 0)
+        ) # (num_pts, )
+     
+        depth = depth[valid_mask]
+        _cam_points = cam_points[valid_mask]
+        depth_map = torch.zeros(
+            cam.HEIGHT, cam.WIDTH
+        ).to(self.device)
+        depth_map[
+            _cam_points[:, 1].long(), _cam_points[:, 0].long()
+        ] = depth.squeeze(-1)
+      
+        
+        # used to filter out the lidar points that are visible from the camera
+        visible_indices = torch.arange(
+            self.lidar_source.num_points, device=self.device
+        )[lidar_infos["lidar_mask"]][valid_mask]
+        # attribute the color of the nearest pixel to the lidar point
+        points_color = cam.images[frame_idx][
+            _cam_points[:, 1].long(), _cam_points[:, 0].long()
+        ]
+        return visible_indices, depth_map, points_color
     
     def project_lidar_pts_on_images(self, delete_out_of_view_points=True):
         """
@@ -642,6 +703,7 @@ class DrivingDataset(SceneDataset):
             delete_out_of_view_points: bool
                 If True, the lidar points that are not visible from the camera will be removed.
         """
+        lidar_interval = 10
         for cam in self.pixel_source.camera_data.values():
             lidar_depth_maps = []
             for frame_idx in tqdm(
@@ -653,64 +715,25 @@ class DrivingDataset(SceneDataset):
                 
                 # get lidar depth on image plane
                 closest_lidar_idx = self.lidar_source.find_closest_timestep(normed_time)
+                print("frame idx ", frame_idx, " closest lidar idx ", closest_lidar_idx)
                 lidar_infos = self.lidar_source.get_lidar_rays(closest_lidar_idx)
-                lidar_points = (
-                    lidar_infos["lidar_origins"]
-                    + lidar_infos["lidar_viewdirs"] * lidar_infos["lidar_ranges"]
-                )
-                
-                # project lidar points to the image plane
-                if cam.undistort:
-                    new_camera_matrix, _ = cv2.getOptimalNewCameraMatrix(
-                                cam.intrinsics[frame_idx].cpu().numpy(),
-                                cam.distortions[frame_idx].cpu().numpy(),
-                                (cam.WIDTH, cam.HEIGHT),
-                                alpha=1,
-                            )
-                    intrinsic_4x4 = torch.nn.functional.pad(
-                            torch.from_numpy(new_camera_matrix), (0, 1, 0, 1)
-                        ).to(self.device)
-                else:
-                    intrinsic_4x4 = torch.nn.functional.pad(
-                        cam.intrinsics[frame_idx], (0, 1, 0, 1)
-                    )
-                intrinsic_4x4[3, 3] = 1.0
-                lidar2img = intrinsic_4x4 @ cam.cam_to_worlds[frame_idx].inverse()
-                lidar_points = (
-                    lidar2img[:3, :3] @ lidar_points.T + lidar2img[:3, 3:4]
-                ).T # (num_pts, 3)
-                
-                depth = lidar_points[:, 2]
-                cam_points = lidar_points[:, :2] / (depth.unsqueeze(-1) + 1e-6) # (num_pts, 2)
-                valid_mask = (
-                    (cam_points[:, 0] >= 0)
-                    & (cam_points[:, 0] < cam.WIDTH)
-                    & (cam_points[:, 1] >= 0)
-                    & (cam_points[:, 1] < cam.HEIGHT)
-                    & (depth > 0)
-                ) # (num_pts, )
-                depth = depth[valid_mask]
-                _cam_points = cam_points[valid_mask]
-                depth_map = torch.zeros(
-                    cam.HEIGHT, cam.WIDTH
-                ).to(self.device)
-                depth_map[
-                    _cam_points[:, 1].long(), _cam_points[:, 0].long()
-                ] = depth.squeeze(-1)
+                visible_indices, depth_map, points_color = self.project_lidar_pts_on_image(frame_idx, lidar_infos, cam)
                 lidar_depth_maps.append(depth_map)
-                
-                # used to filter out the lidar points that are visible from the camera
-                visible_indices = torch.arange(
-                    self.lidar_source.num_points, device=self.device
-                )[lidar_infos["lidar_mask"]][valid_mask]
-                
                 self.lidar_source.visible_masks[visible_indices] = True
-                
-                # attribute the color of the nearest pixel to the lidar point
-                points_color = cam.images[frame_idx][
-                    _cam_points[:, 1].long(), _cam_points[:, 0].long()
-                ]
                 self.lidar_source.colors[visible_indices] = points_color
+
+                # before_index = max(0, closest_lidar_idx - lidar_interval)
+                # after_index = min(len(self.lidar_source._normalized_time), closest_lidar_idx + lidar_interval)
+                # for extend_lidar_idx in range(before_index, after_index):
+                #     visible_indices, depth_map, points_color = self.project_lidar_pts_on_image(extend_lidar_idx, lidar_infos, cam)
+                #     image = cam.images[frame_idx]
+                #     image = image.permute(2, 0, 1)
+                #     detatch_image  = image.clone()
+                #     extend_depth_map = depth_map.unsqueeze(0).expand(3, -1, -1) 
+                #     detatch_image[extend_depth_map > 0] = 255
+                #     project_image_name =  f"/mnt/public/jason/drivestudio/temp/project_image_{cam.cam_name}_{extend_lidar_idx}_{frame_idx}.png"
+                #     save_image(detatch_image, project_image_name)
+                 
 
             cam.load_depth(
                 torch.stack(lidar_depth_maps, dim=0).to(self.device).float()

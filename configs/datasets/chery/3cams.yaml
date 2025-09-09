@@ -8,7 +8,7 @@
 #    4    right_camera       (1920, 866)
 
 data:
-  data_root: /mnt/public/AISIM/yuchen/repos/tools/chery_dataset_process/outputs_unfixed_lidarfixed_mirror # data root for the dataset
+  data_root: /mnt/public/AISIM/yuchen/repos/tools/chery_dataset_process/zero/ego_pose_rev/013 # data root for the dataset
   dataset: waymo
   scene_idx: 13 # which scene to use, [0, 798] for waymo's training set and [0, 849] for nuscenes's train/val sets, inclusive
   start_timestep: 0 # which timestep to start from
