@@ -57,7 +57,7 @@ trainer:
     n_split_samples: 2            # number of samples to split gaussians into
     # may differ in different models
     reset_alpha_value: 0.01       # reset alpha to this value
-    densify_grad_thresh: 0.0005   # above this grad, gaussians are densified
+    densify_grad_thresh: 0.0002   # above this grad, gaussians are densified
     densify_size_thresh: 0.003   # below this size, gaussians are *duplicated*, otherwise split
     cull_alpha_thresh: 0.005       # threshold of opacity for culling gaussians
     cull_scale_thresh: 0.5        # threshold of scale for culling gaussians
