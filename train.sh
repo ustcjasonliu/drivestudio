@@ -4,7 +4,7 @@ start_timestep=0 # start frame index for training
 end_timestep=-1 # end frame index, -1 for the last frame
 output_root="output"
 project="default_project"
-expname="test"
+expname="new_dataset"
 
 python tools/train.py \
     --config_file configs/streetgs.yaml \

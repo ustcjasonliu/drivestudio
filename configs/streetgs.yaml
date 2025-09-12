@@ -60,7 +60,7 @@ trainer:
     densify_grad_thresh: 0.0002   # above this grad, gaussians are densified
     densify_size_thresh: 0.003   # below this size, gaussians are *duplicated*, otherwise split
     cull_alpha_thresh: 0.005       # threshold of opacity for culling gaussians
-    cull_scale_thresh: 0.5        # threshold of scale for culling gaussians
+    cull_scale_thresh: 0.05        # threshold of scale for culling gaussians
     cull_screen_size: 0.15        # if a gaussian is more than this percent of screen space, cull it
     split_screen_size: 0.05       # if a gaussian is more than this percent of screen space, split it
     stop_screen_size_at: 80000     # stop culling/splitting at this step WRT screen size of gaussians

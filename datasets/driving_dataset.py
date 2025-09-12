@@ -715,7 +715,7 @@ class DrivingDataset(SceneDataset):
                 
                 # get lidar depth on image plane
                 closest_lidar_idx = self.lidar_source.find_closest_timestep(normed_time)
-                print("frame idx ", frame_idx, " closest lidar idx ", closest_lidar_idx)
+                # print("frame idx ", frame_idx, " closest lidar idx ", closest_lidar_idx)
                 lidar_infos = self.lidar_source.get_lidar_rays(closest_lidar_idx)
                 visible_indices, depth_map, points_color = self.project_lidar_pts_on_image(frame_idx, lidar_infos, cam)
                 lidar_depth_maps.append(depth_map)
